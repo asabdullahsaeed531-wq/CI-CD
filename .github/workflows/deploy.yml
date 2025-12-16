@@ -1,37 +1,45 @@
-name: Deploy to Tomcat
- 
+name: Deploy to EC2 Tomcat
+
 on:
   push:
     branches:
       - main
- 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
- 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
- 
-    - name: Upload site to EC2
-      run: |
-        # Save SSH key from secret
-        echo "$EC2_KEY" > CI_CD.pem
-        chmod 600 CI_CD.pem
- 
-        # Copy files from repo to EC2
-        scp -i CI_CD.pem -o StrictHostKeyChecking=no index.html style.css $EC2_USER@$EC2_HOST:/home/ec2-user/
- 
-        # On EC2: create folder, move files, restart Tomcat
-        ssh -i CI_CD.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
-          sudo cp /home/ec2-user/index.html /opt/tomcat/webapps/algofive/
-          sudo cp /home/ec2-user/style.css /opt/tomcat/webapps/algofive/
 
-          sudo /opt/tomcat/bin/shutdown.sh
-          sleep 5
-          sudo /opt/tomcat/bin/startup.sh
-        EOF
-      env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-        EC2_USER: ${{ secrets.EC2_USER }}
-        EC2_KEY: ${{ secrets.EC2_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Clean old files
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          script: |
+            sudo rm -rf /opt/tomcat/webapps/algofive/*
+
+      - name: Copy files to EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          source: "./*"
+          target: "/opt/tomcat/webapps/algofive/"
+
+      - name: Restart Tomcat
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          script: |
+            sudo /opt/tomcat/bin/shutdown.sh || true
+            sudo /opt/tomcat/bin/startup.sh
