@@ -13,23 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Copy files to EC2
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          port: 22
-          source: "./*"
-          target: "/opt/tomcat/webapps/algofive/"
+      - name: Deploy website
+  uses: appleboy/ssh-action@v0.1.7
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_KEY }}
+    port: 22
+    script: |
+      # Remove old files
+      sudo rm -rf /opt/tomcat/webapps/algofive/*
 
-      - name: Restart Tomcat
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          port: 22
-          script: |
-            sudo /opt/tomcat/bin/shutdown.sh || true
-            sudo /opt/tomcat/bin/startup.sh
+      # Copy new files from temporary folder
+      sudo cp -r /home/ec2-user/deploy/* /opt/tomcat/webapps/algofive/
+
+      # Restart Tomcat
+      sudo /opt/tomcat/bin/shutdown.sh || true
+      sudo /opt/tomcat/bin/startup.sh
