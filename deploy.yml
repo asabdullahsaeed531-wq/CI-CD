@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           port: 22
           source: "./*"
-          target: "/opt/tomcat/webapps/ROOT/"
+          target: "/opt/tomcat/webapps/algofive/"
 
       - name: Restart Tomcat
         uses: appleboy/ssh-action@v0.1.7
